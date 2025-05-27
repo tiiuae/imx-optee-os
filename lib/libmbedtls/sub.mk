@@ -125,12 +125,14 @@ SRCS_TLS += ssl_client.c
 SRCS_TLS += ssl_ciphersuites.c
 SRCS_TLS += ssl_cookie.c
 SRCS_TLS += ssl_debug_helpers_generated.c
+SRCS_TLS += ssl_msg.c
 SRCS_TLS += ssl_ticket.c
 SRCS_TLS += ssl_tls.c
 SRCS_TLS += ssl_tls12_client.c
 SRCS_TLS += ssl_tls12_server.c
 SRCS_TLS += ssl_tls13_client.c
 SRCS_TLS += ssl_tls13_generic.c
+SRCS_TLS += ssl_tls13_keys.c
 SRCS_TLS += ssl_tls13_server.c
 
 # OBJS_PSA
