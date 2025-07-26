@@ -42,10 +42,6 @@ static TEE_Result imx_ele_read_fuse(unsigned int fuse_index,
 	} cmd = {
 		.fuse_index = fuse_index,
 	};
-	struct read_fuse_rsp {
-		uint32_t rsp_code;
-		uint32_t fuse_value;
-	} rsp = {};
 	struct imx_mu_msg msg = {
 		.header.version = ELE_VERSION_BASELINE,
 		.header.size = SIZE_MSG_32(cmd),
@@ -67,7 +63,7 @@ static TEE_Result imx_ele_read_fuse(unsigned int fuse_index,
 		return res;
 	}
 
-	*fuse_value = rsp.fuse_value;
+	*fuse_value = msg.data.u32[1];
 
 	return TEE_SUCCESS;
 }
