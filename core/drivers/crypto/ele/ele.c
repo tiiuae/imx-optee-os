@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <string_ext.h>
 #include <tee/cache.h>
+#include <tee/tee_cryp_utl.h>
 #include <tee_api_defines.h>
 #include <trace.h>
 #include <types_ext.h>
@@ -625,7 +626,31 @@ TEE_Result hw_get_random_bytes(void *buf, size_t len)
 {
 	return imx_ele_rng_get_random((uint8_t *)buf, len);
 }
+
+void plat_rng_init(void)
+{
+	/*
+	 * hw rng does not need seeding:
+	 * see also core/crypto/rng_hw.c#crypto_rng_init()
+	 *
+	 * Yet with CFG_INSECURE=n we have to provide an implementation.
+	 */
+}
+#else /* CFG_WITH_SOFTWARE_PRNG */
+void plat_rng_init(void)
+{
+	uint8_t buf[64] = { };
+
+	if (imx_ele_rng_get_random(buf, sizeof(buf))) {
+		panic("Failed to read RNG");
+	}
+
+	if (crypto_rng_init(buf, sizeof(buf))) {
+		panic("Failed to initialize RNG");
+	}
+}
 #endif /* CFG_WITH_SOFTWARE_PRNG */
+
 #else
 TEE_Result imx_ele_derive_key(const uint8_t *ctx __unused,
 			      size_t ctx_size __unused, uint8_t *key __unused,
