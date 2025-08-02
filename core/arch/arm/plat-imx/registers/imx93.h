@@ -9,6 +9,7 @@
 #define GICR_BASE 0x48040000
 
 #define UART1_BASE 0x44380000
+#define UART2_BASE 0x44390000
 /*
  * For Normal MU - Use MU_BASE as 0x47520000
  * For Trust MU - Use MU_BASE as 0x47530000

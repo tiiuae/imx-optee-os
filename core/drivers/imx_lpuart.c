@@ -4,12 +4,41 @@
  */
 
 #include <assert.h>
+#include <mm/core_mmu.h>
 #include <drivers/imx_uart.h>
 #include <io.h>
+#include <imx-regs.h>
 #include <keep.h>
 #include <kernel/dt.h>
 #include <kernel/dt_driver.h>
+#include <platform_config.h>
 #include <util.h>
+
+/*
+ * If the configured UART is not on the AONMIX/AIPS1 we can't access it
+ * before we enable the MMU. 1 and 2 are on AONMIX/AIPS1. The rest are on
+ * WAKEUPMIX/AIPS2.
+ *
+ * TRDC configuration for both says they're allocated to NS world. However
+ * somehow, AONMIX UARTs are accessible in S world before MMU activation.
+ *
+ * If you ever need to see logs before MMU initialization, with a UART other
+ * than 1 or 2, you need to allocate it to the S world through TRDC_W like
+ * so (example for LPUART6):
+ *
+ * File: imx-atf/plat/imx/imx93/trdc_config.h
+ *		// Add the following to trdc_w_mbc[] array:
+ *		{ 0, 3, 0, 90, 0, true }, // MBC0 LPUART6 for A55 DID3
+ *
+ * If you want to keep using that after MMU is activated:
+ *
+ * File: imx-optee-os/core/arch/arm/plat-imx/main.c
+ *		// set CONSOLE_UART_BASE to MEM_AREA_IO_SEC
+ */
+
+#if (CONSOLE_UART_BASE != UART1_BASE) && (CONSOLE_UART_BASE != UART2_BASE)
+#define NO_CONSOLE_BEFORE_MMU
+#endif
 
 #define STAT		0x14
 #define DATA		0x1C
@@ -29,7 +58,14 @@ static vaddr_t chip_to_base(struct serial_chip *chip)
 static int imx_lpuart_getchar(struct serial_chip *chip)
 {
 	int ch = 0;
-	vaddr_t base = chip_to_base(chip);
+	vaddr_t base;
+
+#ifdef NO_CONSOLE_BEFORE_MMU
+	if (!cpu_mmu_enabled())
+		return 0;
+#endif
+
+	base = chip_to_base(chip);
 
 	while (io_read32(base + STAT) & STAT_RDRF)
 		;
@@ -44,7 +80,14 @@ static int imx_lpuart_getchar(struct serial_chip *chip)
 
 static void imx_lpuart_putc(struct serial_chip *chip, int ch)
 {
-	vaddr_t base = chip_to_base(chip);
+	vaddr_t base;
+
+#ifdef NO_CONSOLE_BEFORE_MMU
+	if (!cpu_mmu_enabled())
+		return;
+#endif
+
+	base = chip_to_base(chip);
 
 	while (!(io_read32(base + STAT) & STAT_TDRE))
 		;
