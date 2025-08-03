@@ -48,6 +48,9 @@
 #define OCRAM_END 0x2051C000
 #define OCRAM_SIZE (OCRAM_END - OCRAM_START)
 
+/* Stash here boot info found in OCRAM upon creation */
+static struct ocram_bootinfo_s g_bootinfo;
+
 /* This is super wasteful but MMU hardcodes the page size to 4K so it's not
  * like we can use smaller granule and actually benefit from it. This is also
  * due to the fact that we do on-demand MMU mappings **per-allocation**. If
@@ -214,7 +217,8 @@ static TEE_Result create(void)
 	if (!va_ocram_base)
 		return TEE_ERROR_GENERIC;
 
-	memzero_explicit(va_ocram_base, OCRAM_SIZE);
+	if (g_bootinfo.magic != OCRAM_BOOTINFO_MAGIC)
+		memcpy(&g_bootinfo, va_ocram_base, sizeof(g_bootinfo));
 
 	res = tee_mm_init(&ocram_pool, OCRAM_START, OCRAM_SIZE,
 			  OCRAM_GRANULE_SHIFT, 0);
@@ -285,6 +289,27 @@ static void close_session(void *sess_ctx)
 	}
 
 	free(allocs);
+}
+
+static TEE_Result ocram_cmd_get_bootinfo(uint32_t param_types,
+					 TEE_Param params[TEE_NUM_PARAMS])
+{
+	uint32_t exp_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_OUTPUT,
+						   TEE_PARAM_TYPE_NONE,
+						   TEE_PARAM_TYPE_NONE,
+						   TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_param_types)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (params[0].memref.size != sizeof(g_bootinfo))
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	if (g_bootinfo.magic != OCRAM_BOOTINFO_MAGIC)
+		return TEE_ERROR_NO_DATA;
+
+	memcpy(params[0].memref.buffer, &g_bootinfo, sizeof(g_bootinfo));
+	return TEE_SUCCESS;
 }
 
 static TEE_Result ocram_cmd_allocate(void *sess_ctx, uint32_t param_types,
@@ -362,6 +387,8 @@ static TEE_Result invoke_command(void *sess_ctx, uint32_t cmd_id,
 				 TEE_Param params[TEE_NUM_PARAMS])
 {
 	switch (cmd_id) {
+	case PTA_OCRAM_CMD_GET_BOOTINFO:
+		return ocram_cmd_get_bootinfo(param_types, params);
 	case PTA_OCRAM_CMD_ALLOC:
 		return ocram_cmd_allocate(sess_ctx, param_types, params);
 	case PTA_OCRAM_CMD_FREE:

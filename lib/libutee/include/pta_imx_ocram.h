@@ -34,11 +34,57 @@
 #ifndef __PTA_IMX_OCRAM_H__
 #define __PTA_IMX_OCRAM_H__
 
+#include <stdint.h>
+
 #define PTA_OCRAM_UUID \
 	{ 0xf03fea1d,  \
 	  0xa4db,      \
 	  0x41c9,      \
 	  { 0xa1, 0x9f, 0x86, 0x99, 0x89, 0xa0, 0x33, 0xbd } }
+
+/*
+ * AHAB-related definitions required by this PTA
+ */
+
+#define AHAB_IV_MAX_LEN 32
+#define AHAB_HASH_MAX_LEN 64
+
+/* i.MX AHAB container image header */
+struct boot_img_hdr {
+	uint32_t offset;
+	uint32_t size;
+	uint64_t dst;
+	uint64_t entry;
+	uint32_t hab_flags;
+	uint32_t meta;
+	uint8_t hash[AHAB_HASH_MAX_LEN];
+	uint8_t iv[AHAB_IV_MAX_LEN];
+} __packed;
+
+/* following must match definitions of BL2 */
+#define OCRAM_BOOTINFO_MAGIC 0x42414841 /* AHAB */
+#define OCRAM_BOOTINFO_NB_IHDR 4
+
+struct ocram_bootinfo_s {
+	uint32_t magic;
+	struct boot_img_hdr boot_hdrs[OCRAM_BOOTINFO_NB_IHDR];
+	char bl2_version[32];
+} __packed;
+
+/**
+ * Get the AHAB boot image headers and BL2 version stored in OCRAM and saved
+ * by this PTA before any allocations are made.
+ *
+ * [out] memref[0].buffer	Output buffer to store the bootinfo_s struct
+ * [out] memref[0].size		Size of the buffer
+ *
+ * Return codes:
+ * TEE_SUCCESS - Invoke command success
+ * TEE_ERROR_ACCESS_DENIED - Unexpected caller TA context
+ * TEE_ERROR_BAD_PARAMETERS - Incorrect input parameter
+ * TEE_ERROR_NO_DATA - Boot info was not placed in OCRAM
+ */
+#define PTA_OCRAM_CMD_GET_BOOTINFO 0
 
 /**
  * Allocate OCRAM memory
@@ -53,7 +99,7 @@
  * TEE_ERROR_BAD_PARAMETERS - Incorrect input parameter
  * TEE_ERROR_OUT_OF_MEMORY - Out of OCRAM memory
  */
-#define PTA_OCRAM_CMD_ALLOC 0
+#define PTA_OCRAM_CMD_ALLOC 1
 
 /*
  * Free OCRAM memory
@@ -66,5 +112,6 @@
  * TEE_ERROR_BAD_PARAMETERS - Incorrect input parameter
  * TEE_ERROR_ITEM_NOT_FOUND - Specified memory not allocated to caller
  */
-#define PTA_OCRAM_CMD_FREE 1
+#define PTA_OCRAM_CMD_FREE 2
+
 #endif /* __PTA_IMX_OCRAM_H__ */
