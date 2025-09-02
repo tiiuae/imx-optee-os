@@ -8,10 +8,10 @@
 
 TEE_Result __weak nv_counter_get_ree_fs(uint32_t *value __unused)
 {
-	return TEE_ERROR_NOT_IMPLEMENTED;
+	return TEE_SUCCESS;
 }
 
 TEE_Result __weak nv_counter_incr_ree_fs_to(uint32_t value __unused)
 {
-	return TEE_ERROR_NOT_IMPLEMENTED;
+	return TEE_SUCCESS;
 }
